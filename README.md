@@ -42,6 +42,30 @@ commit the code as task-1
 
 ---
 
+## Task 1 Reflection
+
+**Question 1:** Describe your implementation approach and the key decisions you made.
+
+I implemented the MessagesController by defining five endpoints as specified in the assignment, 
+each corresponding to a CRUD operation for messages. For data access, I used methods directly 
+from the provided IMessageRepository interface, keeping the controller logic clean and straightforward. 
+For each action, I handled null checks and returned appropriate status codes (200 OK, 201 Created, 204 No Content, 404 Not Found) 
+following RESTful best practices. When creating a message, 
+I ensured required properties (OrganizationId, Title, Content, CreatedAt, IsActive) were set, 
+and all IDs used were GUIDs as specified. Testing was done using Swagger to verify endpoint behavior.
+
+
+
+**Question 2:** What would you improve or change if you had more time?
+
+With more time, I would add model validation and error handling to improve robustness. 
+I would also implement logging for errors and important events for better monitoring, 
+and write unit tests to verify each endpoint’s behavior. Additionally, 
+I’d consider implementing pagination for the GetAll endpoint and possibly customizing 
+response messages for improved API usability.
+
+---
+
 ## Task 2
 **Assignment:** Separate business logic from the controller and add proper validation.
 1. Implement `MessageLogic` class (implement `IMessageLogic`)
