@@ -1,3 +1,4 @@
+using CodeChallenge.Api.Logic;
 using CodeChallenge.Api.Models;
 using CodeChallenge.Api.Repositories;
 using Microsoft.AspNetCore.Mvc;
@@ -8,28 +9,28 @@ namespace CodeChallenge.Api.Controllers;
 [Route("api/v1/organizations/{organizationId}/messages")]
 public class MessagesController : ControllerBase
 {
-    private readonly IMessageRepository _repository;
+    private readonly IMessageLogic _logic;
     private readonly ILogger<MessagesController> _logger;
 
-    public MessagesController(IMessageRepository repository, ILogger<MessagesController> logger)
+    public MessagesController(IMessageLogic logic, ILogger<MessagesController> logger)
     {
-        _repository = repository;
+        _logic = logic;
         _logger = logger;
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Message>>> GetAll(Guid organizationId)
+    public async Task<ActionResult<IEnumerable<Message>>> GetAll([FromRoute] Guid organizationId)
     {
         // TODO: Implement
-        var messages = await _repository.GetAllByOrganizationAsync(organizationId);
+        var messages = await _logic.GetAllMessagesAsync(organizationId);
         return Ok(messages);
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Message>> GetById(Guid organizationId, Guid id)
+    public async Task<ActionResult<Message>> GetById([FromRoute] Guid organizationId, Guid id)
     {
         // TODO: Implement
-        var message = await _repository.GetByIdAsync(organizationId, id);
+        var message = await _logic.GetMessageAsync(organizationId, id);
         if (message == null)
         {
             return NotFound();
@@ -38,48 +39,72 @@ public class MessagesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Message>> Create(Guid organizationId, [FromBody] CreateMessageRequest request)
+    public async Task<ActionResult<Message>> Create([FromRoute] Guid organizationId, [FromBody] CreateMessageRequest request)
     {
         // TODO: Implement
-        var newMessage = new Message
-        {
-            OrganizationId = organizationId,
-            Title = request.Title,
-            Content = request.Content,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true,
-        };
+        var result = await _logic.CreateMessageAsync(organizationId, request);
 
-        var created = await _repository.CreateAsync(newMessage);
-        return CreatedAtAction(nameof(GetById), new { organizationId, id = created.Id }, created);
+        if (result is Created<Message> created)
+        {
+            return CreatedAtAction(nameof(GetById), new { organizationId, id = created.Value.Id }, created.Value);
+        } else if (result is ValidationError valErr)
+        {
+            return BadRequest(valErr.Errors);
+        } else if (result is Conflict conflict)
+        {
+            return Conflict(conflict.Message);
+        } else
+        {
+            return StatusCode(500);
+        }
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult> Update(Guid organizationId, Guid id, [FromBody] UpdateMessageRequest request)
+    public async Task<ActionResult> Update([FromRoute] Guid organizationId, [FromRoute] Guid id, [FromBody] UpdateMessageRequest request)
     {
         // TODO: Implement
-        var existing = await _repository.GetByIdAsync(organizationId, id);
-        if(existing == null) 
-            return NotFound();
+        var result = await _logic.UpdateMessageAsync(organizationId, id, request);
 
-        existing.Title = request.Title;
-        existing.Content = request.Content;
+        if (result is Updated)
+        {
+            return NoContent();
+        } else if (result is NotFound notFound)
+        {
+            return NotFound(notFound.Message);
+        } else if (result is ValidationError valErr)
+        {
+            return BadRequest(valErr.Errors);
+        } else if (result is Conflict conflict)
+        {
+            return Conflict(conflict.Message);
+        } else
+        {
+            return StatusCode(500);
+        }
 
-        var updated = await _repository.UpdateAsync(existing);
-        if(updated == null)
-            return NotFound();
-
-        return NoContent();
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult> Delete(Guid organizationId, Guid id)
+    public async Task<ActionResult> Delete([FromRoute] Guid organizationId, [FromRoute] Guid id)
     {
         // TODO: Implement
-        var deleted = await _repository.DeleteAsync(organizationId, id);
-        if(!deleted)
-            return NotFound();
+        var result = await _logic.DeleteMessageAsync(organizationId, id);
 
-        return NoContent();
+        if (result is Deleted)
+        {
+            return NoContent(); 
+        }
+        else if (result is NotFound notFound)
+        {
+            return NotFound(notFound.Message);
+        }
+        else if (result is Conflict conflict)
+        {
+            return Conflict(conflict.Message);
+        }
+        else
+        {
+            return StatusCode(500);
+        }
     }
 }

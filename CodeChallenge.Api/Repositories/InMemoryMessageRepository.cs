@@ -26,7 +26,13 @@ public class InMemoryMessageRepository : IMessageRepository
  {
    lock (_lock)
         {
-     var messages = _messages.Values
+            Console.WriteLine($"Requested: {organizationId}");
+            foreach (var m in _messages.Values)
+            {
+                Console.WriteLine($"Stored: {m.Id}, OrgId: {m.OrganizationId}, Title: {m.Title}");
+            }
+
+            var messages = _messages.Values
             .Where(m => m.OrganizationId == organizationId)
            .OrderByDescending(m => m.CreatedAt)
            .ToList();
@@ -51,6 +57,9 @@ public class InMemoryMessageRepository : IMessageRepository
         {
             message.Id = Guid.NewGuid();
        message.CreatedAt = DateTime.UtcNow;
+
+            Console.WriteLine($"Storing message: id={message.Id}, orgId={message.OrganizationId}, title={message.Title}");
+
             _messages[message.Id] = message;
           return Task.FromResult(message);
         }
