@@ -188,5 +188,115 @@ namespace CodeChallenge.Tests
             _repoMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
         }
 
+
+
+        // 7. GetMessageAsync - message exists
+        [Fact]
+        public async Task GetMessageAsync_ShouldReturnSuccess_WhenMessageExists()
+        {
+            // Arrange
+            var id = Guid.NewGuid();
+            var message = new Message
+            {
+                Id = id,
+                OrganizationId = _orgId,
+                Title = "Title",
+                Content = "Some valid content here",
+                IsActive = true
+            };
+
+            _repoMock
+                .Setup(r => r.GetByIdAsync(_orgId, id))
+                .ReturnsAsync(message);
+
+            // Act
+            var result = await _sut.GetMessageAsync(_orgId, id);
+
+            // Assert
+            result.Should().BeOfType<Success<Message>>();
+            var success = result as Success<Message>;
+            success!.Value.Should().Be(message);
+        }
+
+
+
+
+        // 8. GetMessageAsync - message not found
+        [Fact]
+        public async Task GetMessageAsync_ShouldReturnNotFound_WhenMessageDoesNotExist()
+        {
+            // Arrange
+            var id = Guid.NewGuid();
+
+            _repoMock
+                .Setup(r => r.GetByIdAsync(_orgId, id))
+                .ReturnsAsync((Message?)null);
+
+            // Act
+            var result = await _sut.GetMessageAsync(_orgId, id);
+
+            // Assert
+            result.Should().BeOfType<NotFound>();
+        }
+
+
+
+        // 9. GetAllMessagesAsync - returns list
+        [Fact]
+        public async Task GetAllMessagesAsync_ShouldReturnSuccess_WithMessages()
+        {
+            // Arrange
+            var messages = new List<Message>
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    OrganizationId = _orgId,
+                    Title = "Title 1",
+                    Content = "Some valid content 1",
+                    IsActive = true
+                },
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    OrganizationId = _orgId,
+                    Title = "Title 2",
+                    Content = "Some valid content 2",
+                    IsActive = true
+                }
+            };
+
+            _repoMock
+                .Setup(r => r.GetAllByOrganizationAsync(_orgId))
+                .ReturnsAsync(messages);
+
+            // Act
+            var result = await _sut.GetAllMessagesAsync(_orgId);
+
+            // Assert
+            result.Should().BeOfType<Success<IEnumerable<Message>>>();
+            var success = result as Success<IEnumerable<Message>>;
+            success!.Value.Should().BeEquivalentTo(messages);
+        }
+
+
+
+        // 10. GetAllMessagesAsync - empty list
+        [Fact]
+        public async Task GetAllMessagesAsync_ShouldReturnSuccess_WithEmptyList_WhenNoMessages()
+        {
+            // Arrange
+            _repoMock
+                .Setup(r => r.GetAllByOrganizationAsync(_orgId))
+                .ReturnsAsync(new List<Message>());
+
+            // Act
+            var result = await _sut.GetAllMessagesAsync(_orgId);
+
+            // Assert
+            result.Should().BeOfType<Success<IEnumerable<Message>>>();
+            var success = result as Success<IEnumerable<Message>>;
+            success!.Value.Should().BeEmpty();
+        }
     }
 }
