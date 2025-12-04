@@ -19,23 +19,19 @@ public class MessagesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Message>>> GetAll([FromRoute] Guid organizationId)
+    public async Task<IActionResult> GetAll([FromRoute] Guid organizationId)
     {
         // TODO: Implement
-        var messages = await _logic.GetAllMessagesAsync(organizationId);
-        return Ok(messages);
+        var result = await _logic.GetAllMessagesAsync(organizationId);
+        return result.ToActionResult();
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Message>> GetById([FromRoute] Guid organizationId, Guid id)
+    public async Task<IActionResult> GetById([FromRoute] Guid organizationId, [FromRoute] Guid id)
     {
         // TODO: Implement
-        var message = await _logic.GetMessageAsync(organizationId, id);
-        if (message == null)
-        {
-            return NotFound();
-        }
-        return Ok(message);
+        var result = await _logic.GetMessageAsync(organizationId, id);
+        return result.ToActionResult();
     }
 
     [HttpPost]

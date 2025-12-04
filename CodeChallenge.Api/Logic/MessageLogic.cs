@@ -15,27 +15,45 @@ namespace CodeChallenge.Api.Logic
             _repository = repository; 
         }
 
-        public async Task<Result> CreateMessageAsync(Guid organizationId, CreateMessageRequest request)
+
+        private Dictionary<string, string[]> ValidateTitleAndContent(string? title, string? content)
         {
             var errors = new Dictionary<string, string[]>();
 
-            // Validation: Title required and length check
-            if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Length < 3 || request.Title.Length > 200)
+            // Title: required, 3–200 chars
+            if (string.IsNullOrWhiteSpace(title) || title.Length < 3 || title.Length > 200)
             {
                 errors["Title"] = new[] { "Title must be between 3 and 200 characters." };
             }
 
-            // Validation: Content length check
-            if (string.IsNullOrWhiteSpace(request.Content) || request.Content.Length < 10 || request.Content.Length > 1000)
+            // Content: required, 10–1000 chars
+            if (string.IsNullOrWhiteSpace(content) || content.Length < 10 || content.Length > 1000)
             {
                 errors["Content"] = new[] { "Content must be between 10 and 1000 characters." };
             }
 
-            // If validation errors, return all at once
+            return errors;
+        }
+
+
+        public async Task<Result> CreateMessageAsync(Guid organizationId, CreateMessageRequest? request)
+        {
+            // null check first
+            if (request is null)
+            {
+                var nullErrors = new Dictionary<string, string[]>
+                {
+                    ["Request"] = new[] { "Request body cannot be null." }
+                };
+                return new ValidationError(nullErrors);
+            }
+
+            // use shared validation helper
+            var errors = ValidateTitleAndContent(request.Title, request.Content);
             if (errors.Count > 0)
                 return new ValidationError(errors);
 
-            // Business Rule: Title must be unique per organization for active messages
+            // Title must be unique per organization for active messages
             var messages = await _repository.GetAllByOrganizationAsync(organizationId);
             if (messages.Any(m => m.Title == request.Title && m.IsActive))
                 return new Conflict("Title must be unique for this organization.");
@@ -56,8 +74,18 @@ namespace CodeChallenge.Api.Logic
         }
 
 
-        public async Task<Result> UpdateMessageAsync(Guid organizationId, Guid id, UpdateMessageRequest request)
+        public async Task<Result> UpdateMessageAsync(Guid organizationId, Guid id, UpdateMessageRequest? request)
         {
+            // null check first
+            if (request is null)
+            {
+                var nullErrors = new Dictionary<string, string[]>
+                {
+                    ["Request"] = new[] { "Request body cannot be null." }
+                };
+                return new ValidationError(nullErrors);
+            }
+
             var message = await _repository.GetByIdAsync(organizationId, id);
             if (message == null)
                 return new NotFound("Message not found.");
@@ -66,20 +94,12 @@ namespace CodeChallenge.Api.Logic
             if (!message.IsActive)
                 return new Conflict("Only active messages can be updated.");
 
-            var errors = new Dictionary<string, string[]>();
-
-            // Validation: Title required and length check
-            if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Length < 3 || request.Title.Length > 200)
-                errors["Title"] = new[] { "Title must be between 3 and 200 characters." };
-
-            // Validation: Content length check
-            if (string.IsNullOrWhiteSpace(request.Content) || request.Content.Length < 10 || request.Content.Length > 1000)
-                errors["Content"] = new[] { "Content must be between 10 and 1000 characters." };
-
+            // use shared validation helper
+            var errors = ValidateTitleAndContent(request.Title, request.Content);
             if (errors.Count > 0)
                 return new ValidationError(errors);
 
-            // Business Rule: Title must be unique per organization for active messages (except this message)
+            // Title must be unique per organization for active messages (except this message)
             var messages = await _repository.GetAllByOrganizationAsync(organizationId);
             if (messages.Any(m => m.Title == request.Title && m.Id != id && m.IsActive))
                 return new Conflict("Title must be unique for this organization.");
@@ -107,14 +127,21 @@ namespace CodeChallenge.Api.Logic
             return new Deleted();
         }
 
-        public async Task<Message?> GetMessageAsync(Guid organizationId, Guid id)
+        public async Task<Result> GetMessageAsync(Guid organizationId, Guid id)
         {
-            return await _repository.GetByIdAsync(organizationId, id);
+            var message = await _repository.GetByIdAsync(organizationId, id);
+
+            if (message == null)
+                return new NotFound("Message not found.");
+
+            return new Success<Message>(message);
         }
 
-        public async Task<IEnumerable<Message>> GetAllMessagesAsync(Guid organizationId)
+        public async Task<Result> GetAllMessagesAsync(Guid organizationId)
         {
-            return await _repository.GetAllByOrganizationAsync(organizationId);
+            var messages = await _repository.GetAllByOrganizationAsync(organizationId);
+
+            return new Success<IEnumerable<Message>>(messages);
         }
     }
 }

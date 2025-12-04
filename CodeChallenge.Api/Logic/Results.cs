@@ -3,6 +3,7 @@ namespace CodeChallenge.Api.Logic;
 public abstract record Result;
 
 public record Success : Result;
+public record Success<T>(T Value) : Result;
 public record Created<T>(T Value) : Result;
 public record Updated : Result;
 public record Deleted : Result;
